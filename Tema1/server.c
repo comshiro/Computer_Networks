@@ -61,132 +61,165 @@ char *login(char *s)
     return result = "Invalid user.Try again";
 }
 
+#define BUF_SIZE 42
+
 int main()
 {
 
     struct FIFOs fifos = createFIFO();
 
-    int p_p2c[2]; /// Pipe pentru comunicare parinte->copil
-    int s_c2p[2]; // Socketpair pentru comunicare copil->parinte
-
-    if (pipe(p_p2c) == -1)
+    int fd_read = open(fifos.fifo_from_client, O_RDONLY);
+    if (fd_read == -1)
     {
-        perror("pipe failed");
-    }
-    if (socketpair(AF_UNIX, SOCK_STREAM, 0, s_c2p) == -1)
-    {
-        perror("socketpair failed");
+        perror("open read failed");
+        return 1;
     }
 
-    int pid = fork();
-    switch (pid)
+    int fd_write = open(fifos.fifo_to_client, O_WRONLY);
+    if (fd_write == -1)
     {
-
-    case -1:
-        perror("Eroare la fork");
-        break;
-
-    case 0: ////PROCESARE COMANDA///EFECTUATA DE COPIL
-    {
-        close(p_p2c[1]);
-        int num;
-        char s[300];
-        char *result;
-
-        while (quit)
-        {
-            do
-            {
-                if ((num = read(p_p2c[0], s, 300)) == -1)
-                    perror("Eroare la citirea din pipe parent -> child");
-                else
-                    s[num] = '\0';
-            } while (num > 0);
-
-            char *p = strtok(s, " ");
-            while (p)
-            {
-                if (strcmp(p, "login") == 0)
-                {
-                    p = strtok(NULL, " ");
-                    result = login(p);
-                }
-
-                if (strcmp(p, "quit") == 0)
-                {
-                    logged_in = 0;
-                    quit = 0;
-                    result = "Ati fost deloggat";
-                    break;
-                }
-                p = strtok(NULL, " ");
-            }
-
-            /// COPILUL INCARCA REZULTATUL IN SOCKEPAIR
-            int n = strlen(result) + 1;
-            write(s_c2p[1], &n, sizeof(int));
-            write(s_c2p[1], result, n);
-        }
-
-        close(p_p2c[0]); // Close read end of the pipe
-        close(s_c2p[1]); // Close write end of socketpair
-        exit(0);         // Exit child process
+        perror("open write failed");
+        return 1;
     }
 
-    default:
-        ////CREARE SI DESCHIDERE FD PT FIFOS////////
 
-        int fd_read = open(fifos.fifo_from_client, O_RDONLY);
-        if (fd_read == -1)
+    while (42)
+    {
+        char buf[BUF_SIZE];
+        int bytes_read = read(fd_read, buf, BUF_SIZE - 1);
+        if (bytes_read == -1)
         {
-            perror("open read failed");
-            return 1;
+            perror("read failed");
+            continue ; // break
         }
-
-        int fd_write = open(fifos.fifo_to_client, O_WRONLY);
-        if (fd_write == -1)
-        {
-            perror("open write failed");
-            return 1;
-        }
-
-        while (quit)
-        {
-            char s[300];
-            int num;
-
-            do /// Tatal citeste commanda si o stocheaza in s
-            {
-                if ((num = read(fd_read, s, 300)) == -1)
-                    perror("Eroare la citirea din FIFO!");
-                else
-                    s[num] = '\0';
-            } while (num > 0);
-
-            /// Tatal incarca s in pipe
-            if (strcmp(s, "quit") == 0)
-            {
-                quit = 0;
-                break;
-            }
-
-            write(p_p2c[1], s, num);
-            char result[300];
-
-            /// Tatal citeste rezultatul din socketpair si il scrie in fifo to client
-            do
-            {
-                if ((num = read(s_c2p[0], result, 300)) == -1)
-                    perror("Eroare la citirea din socketpair!");
-                else
-                    result[num] = '\0';
-            } while (num > 0);
-
-            write(fd_write, result, num);
-        }
-        close(fd_read);
-        close(fd_write);
+        buf[bytes_read] = '\0';
+        printf("Server is getting the command: %s\n", buf);
     }
+
+    
+    // int p_p2c[2]; /// Pipe pentru comunicare parinte->copil
+    // int s_c2p[2]; // Socketpair pentru comunicare copil->parinte
+
+    // if (pipe(p_p2c) == -1)
+    // {
+    //     perror("pipe failed");
+    // }
+    // if (socketpair(AF_UNIX, SOCK_STREAM, 0, s_c2p) == -1)
+    // {
+    //     perror("socketpair failed");
+    // }
+
+
+
+    // int pid = fork();
+    // switch (pid)
+    // {
+
+    // case -1:
+    //     perror("Eroare la fork");
+    //     break;
+
+    // case 0: ////PROCESARE COMANDA///EFECTUATA DE COPIL
+    // {
+    //     close(p_p2c[1]);
+    //     int num;
+    //     char s[300];
+    //     char *result;
+
+    //     while (quit)
+    //     {
+    //         do
+    //         {
+    //             if ((num = read(p_p2c[0], s, 300)) == -1)
+    //                 perror("Eroare la citirea din pipe parent -> child");
+    //             else
+    //                 s[num] = '\0';
+    //         } while (num > 0);
+
+    //         char *p = strtok(s, " ");
+    //         while (p)
+    //         {
+    //             if (strcmp(p, "login") == 0)
+    //             {
+    //                 p = strtok(NULL, " ");
+    //                 result = login(p);
+    //             }
+
+    //             if (strcmp(p, "quit") == 0)
+    //             {
+    //                 logged_in = 0;
+    //                 quit = 0;
+    //                 result = "Ati fost deloggat";
+    //                 break;
+    //             }
+    //             p = strtok(NULL, " ");
+    //         }
+
+    //         /// COPILUL INCARCA REZULTATUL IN SOCKEPAIR
+    //         int n = strlen(result) + 1;
+    //         write(s_c2p[1], &n, sizeof(int));
+    //         write(s_c2p[1], result, n);
+    //     }
+
+    //     close(p_p2c[0]); // Close read end of the pipe
+    //     close(s_c2p[1]); // Close write end of socketpair
+    //     exit(0);         // Exit child process
+    // }
+
+    // default:
+    //     ////CREARE SI DESCHIDERE FD PT FIFOS////////
+
+    //     int fd_read = open(fifos.fifo_from_client, O_RDONLY);
+    //     if (fd_read == -1)
+    //     {
+    //         perror("open read failed");
+    //         return 1;
+    //     }
+
+    //     int fd_write = open(fifos.fifo_to_client, O_WRONLY);
+    //     if (fd_write == -1)
+    //     {
+    //         perror("open write failed");
+    //         return 1;
+    //     }
+
+    //     while (quit)
+    //     {
+    //         char s[300];
+    //         int num;
+
+    //         do /// Tatal citeste commanda si o stocheaza in s
+    //         {
+    //             if ((num = read(fd_read, s, 300)) == -1)
+    //                 perror("Eroare la citirea din FIFO!");
+    //             else
+    //                 s[num] = '\0';
+    //         } while (num > 0);
+
+    //         /// Tatal incarca s in pipe
+    //         if (strcmp(s, "quit") == 0)
+    //         {
+    //             quit = 0;
+    //             break;
+    //         }
+
+    //         write(p_p2c[1], s, num);
+    //         char result[300];
+
+    //         /// Tatal citeste rezultatul din socketpair si il scrie in fifo to client
+    //         do
+    //         {
+    //             if ((num = read(s_c2p[0], result, 300)) == -1)
+    //                 perror("Eroare la citirea din socketpair!");
+    //             else
+    //                 result[num] = '\0';
+    //         } while (num > 0);
+
+    //         write(fd_write, result, num);
+    //     }
+    //     close(fd_read);
+    //     close(fd_write);
+    // }
 
     return 0;
 }
