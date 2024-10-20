@@ -26,7 +26,6 @@ int main()
     int quit = 1;
     char input[300];
     char response[300];
-    int num;
 
     /// DESCHIDEM FIFO-URILE
     printf("Connecting to server...\n");
@@ -46,9 +45,15 @@ int main()
     printf("Enter a message to send to the server: ");
 
     /// INCEPEM LOOP-UL DE SCRIERE CITIRE
-    do
+    while (quit)
     {
-        fgets(input, sizeof(input), stdin); /// CITIM COMANDA DE LA TASTATURA
+        printf("Enter command: ");
+        if (fgets(input, sizeof(input), stdin) == NULL)
+        {
+            perror("Error reading input");
+        } /// CITIM COMANDA DE LA TASTATURA
+
+        input[strcspn(input, "\n")] = 0;
 
         if (write(fd_write, input, strlen(input)) == -1) /// CLIENTUL SCRIE COMANDA IN FIFO
         {
@@ -58,31 +63,32 @@ int main()
 
         printf("Message sent to server: \"%s\"\n", input);
 
-        if (strcmp(input, "quit"))
+        if (strcmp(input, "quit") == 0)
         {
-            quit=0;
-            close(fd_read);
-            close(fd_write);
-            return 0;
+            quit = 0;
+            break;
         }
 
-        char *res_size;
+        char *res_size = "";
         int size;
-        do /// CITIRE RESULTAT TRIMIS DE SERVER
+
+        if ((read(fd_read, res_size, 4)) == -1)
+            perror("Error reading response from FIFO");
+        else
+        /// CITIRE RESULTAT TRIMIS DE SERVER
         {
-            if ((read(fd_read, res_size, 4)) == -1)
-            {
-                perror("Error reading response from FIFO");
-            }
+            size = char_to_int(res_size);
+
+            if ((read(fd_read, response, size)) == -1)
+                perror("Eroare citire rezultat de marimea specificata!");
             else
             {
-                size = char_to_int(res_size);
-
-                if ((num = read(fd_read, response, size)) == -1)
-                    response[num] = '\0';
+                response[size] = '\0';
                 printf("Server's response: \"%s\"\n", response);
             }
-        } while (num > 0);
+        }
+        close(fd_read);
+        close(fd_write);
 
-    } while (quit);
-}
+        return 0;
+    }

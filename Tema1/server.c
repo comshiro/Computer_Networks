@@ -46,6 +46,8 @@ char *login(char *s)
         return result = "User already logged in";
 
     FILE *file = fopen(CONFIGURATION_FILE, "r");
+    if (!file)
+        perror("Configuration file cannot be opened");
 
     char line[256];
     while (fgets(line, sizeof(line), file))
@@ -162,8 +164,15 @@ int main()
             } while (num > 0);
 
             /// Tatal incarca s in pipe
+            if (strcmp(s, "quit") == 0)
+            {
+                quit = 0;
+                break;
+            }
+
             write(p_p2c[1], s, num);
-            char *result;
+            char result[300];
+
             /// Tatal citeste rezultatul din socketpair si il scrie in fifo to client
             do
             {
