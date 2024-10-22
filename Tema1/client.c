@@ -14,7 +14,7 @@ int char_to_int(char *s)
 {
     int x = 0;
     ;
-    for (int i = 0; i < strlen(s); i++)
+    for (size_t i = 0; i < strlen(s); i++)
     {
         x = x * 10 + (s[i] - '0');
     }
@@ -69,14 +69,17 @@ int main()
             break;
         }
 
-        char *res_size = "";
+        char res_size[5];
         int size;
+        size_t read_bytes;
 
-        if ((read(fd_read, res_size, 4)) == -1)
+        read_bytes = read(fd_read, res_size, 4);
+        if (read_bytes == -1)
             perror("Error reading response from FIFO");
         else
         /// CITIRE RESULTAT TRIMIS DE SERVER
         {
+            res_size[read_bytes] = '\0';
             size = char_to_int(res_size);
 
             if ((read(fd_read, response, size)) == -1)
@@ -92,3 +95,4 @@ int main()
 
         return 0;
     }
+}
