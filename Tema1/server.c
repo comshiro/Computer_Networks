@@ -194,6 +194,7 @@ int main()
                 printf("We got the result: [%.10s]\n", buf);
                 wait(NULL);
                 // Send to the client
+                write(fd_write, &buf, bytes_read);
                 // TODO
                 break;
         }
